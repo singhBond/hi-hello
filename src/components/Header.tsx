@@ -39,7 +39,7 @@ export const Header = () => (
         Call: +91 9113320865
       </p>
       <p className="text-gray-200 text-[10px] md:text-xs uppercase tracking-tighter">
-        Accepting Online Order : 10:00 AM - 9:00 PM
+        Accepting Online Order : 10:00 AM - 8:00 PM
       </p>
     </div>
   </div>
