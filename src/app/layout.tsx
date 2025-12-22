@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bakery's Point",
-  description: "Bakes n Cakes",
+  title: "Hi-Hello",
+  description: "Chinese, Indian, South Indian Foods",
 };
 
 export default function RootLayout({

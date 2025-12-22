@@ -1,7 +1,7 @@
 // app/admin/adminpanel/components/EditCategoryDialog.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Pencil, X, Upload } from "lucide-react";
 import {
   Dialog,
@@ -18,26 +18,60 @@ import { Button } from "@/src/components/ui/button";
 import { updateDoc, doc } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 
-// Image compression helper (same as before)
-const compressImage = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
+/* =======================
+   Types
+======================= */
+
+export interface Category {
+  id: string;
+  name?: string;
+  imageUrl?: string;
+}
+
+interface EditCategoryDialogProps {
+  category: Category;
+}
+
+/* =======================
+   Helpers
+======================= */
+
+// Capitalize category name
+const formatName = (value: string) =>
+  value
+    .trim()
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .map(
+      (word) =>
+        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    )
+    .join(" ");
+
+// Compress image to < 500 KB
+const compressImage = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
     const img = new Image();
     const reader = new FileReader();
 
-    reader.onload = (e) => (img.src = e.target?.result as string);
+    reader.onload = () => {
+      img.src = reader.result as string;
+    };
+
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d")!;
-      let width = img.width;
-      let height = img.height;
-      const MAX_DIM = 1200;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject("Canvas error");
 
-      if (width > height && width > MAX_DIM) {
-        height = Math.round((height * MAX_DIM) / width);
-        width = MAX_DIM;
-      } else if (height > MAX_DIM) {
-        width = Math.round((width * MAX_DIM) / height);
-        height = MAX_DIM;
+      let { width, height } = img;
+      const MAX = 1200;
+
+      if (width > height && width > MAX) {
+        height = (height * MAX) / width;
+        width = MAX;
+      } else if (height > MAX) {
+        width = (width * MAX) / height;
+        height = MAX;
       }
 
       canvas.width = width;
@@ -45,108 +79,91 @@ const compressImage = (file: File): Promise<string> => {
       ctx.drawImage(img, 0, 0, width, height);
 
       let quality = 0.9;
-      const TARGET_KB = 500 * 1024;
+      const TARGET = 500 * 1024;
 
-      const tryCompress = () => {
+      const attempt = () => {
         const dataUrl = canvas.toDataURL("image/jpeg", quality);
-        const byteSize = Math.round((dataUrl.length * 3) / 4);
+        const size = (dataUrl.length * 3) / 4;
 
-        if (byteSize < TARGET_KB || quality <= 0.1) {
+        if (size <= TARGET || quality <= 0.1) {
           resolve(dataUrl);
         } else {
-          quality = Math.max(quality - 0.1, 0.1);
-          setTimeout(tryCompress, 0);
+          quality -= 0.1;
+          attempt();
         }
       };
 
-      tryCompress();
+      attempt();
     };
 
-    img.onerror = reject;
     reader.onerror = reject;
+    img.onerror = reject;
     reader.readAsDataURL(file);
   });
-};
 
-// Format name helper
-const formatName = (raw: string) =>
-  raw
-    .trim()
-    .replace(/\s+/g, " ")
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(" ");
+/* =======================
+   Component
+======================= */
 
-type Category = {
-  id: string;
-  name?: string;
-  imageUrl?: string;
-};
-
-interface EditCategoryDialogProps {
-  category: Category;
-}
-
-export default function EditCategoryDialog({ category }: EditCategoryDialogProps) {
+export default function EditCategoryDialog({
+  category,
+}: EditCategoryDialogProps) {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState(category.name || "");
-  const [image, setImage] = useState<string | null>(category.imageUrl || null);
-  const [preview, setPreview] = useState(category.imageUrl || "");
+  const [name, setName] = useState(category.name ?? "");
+  const [image, setImage] = useState<string | null>(
+    category.imageUrl ?? null
+  );
+  
+  const [preview, setPreview] = useState(category.imageUrl ?? "");
   const [sizeInfo, setSizeInfo] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Reset form when dialog opens
+  // Reset when dialog opens
   useEffect(() => {
     if (open) {
-      setName(category.name || "");
-      setImage(category.imageUrl || null);
-      setPreview(category.imageUrl || "");
+      setName(category.name ?? "");
+      setImage(category.imageUrl ?? null);
+      setPreview(category.imageUrl ?? "");
       setSizeInfo("");
     }
   }, [open, category]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("Please select a valid image file");
+      alert("Please select a valid image");
       return;
     }
 
-    compressImage(file)
-      .then((compressed) => {
-        setImage(compressed);
-        setPreview(compressed);
-        const kb = (compressed.length * 0.75 / 1024).toFixed(1);
-        setSizeInfo(`~${kb} KB`);
-      })
-      .catch(() => alert("Failed to process image"));
+    try {
+      const compressed = await compressImage(file);
+      setImage(compressed);
+      setPreview(compressed);
+      setSizeInfo(`~${((compressed.length * 0.75) / 1024).toFixed(1)} KB`);
+    } catch {
+      alert("Image processing failed");
+    }
   };
 
   const handleSave = async () => {
-    if (!name.trim()) {
-      alert("Category name is required");
-      return;
-    }
-    if (!image) {
-      alert("Category image is required");
-      return;
-    }
+    if (!name.trim() || !image) return;
 
-    setIsLoading(true);
+    setLoading(true);
     try {
       await updateDoc(doc(db, "categories", category.id), {
         name: formatName(name),
         imageUrl: image,
       });
-
       setOpen(false);
-    } catch (error) {
-      console.error("Error updating category:", error);
+    } catch (err) {
+      console.error(err);
       alert("Failed to update category");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -162,71 +179,79 @@ export default function EditCategoryDialog({ category }: EditCategoryDialogProps
         <DialogHeader>
           <DialogTitle>Edit Category</DialogTitle>
           <DialogDescription>
-            Update the category name and image
+            Update category name and image
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 py-4">
-          {/* Category Name */}
+          {/* Name */}
           <div className="space-y-2">
-            <Label htmlFor="edit-cat-name">
+            <Label>
               Category Name <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="edit-cat-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Pizzas, Burgers"
-              disabled={isLoading}
+              disabled={loading}
             />
           </div>
 
-          {/* Image Upload */}
+          {/* Image */}
           <div className="space-y-3">
             <Label>
               Category Image <span className="text-red-500">*</span>
             </Label>
 
             {preview ? (
-              <div className="relative inline-block">
+              <div className="relative">
                 <img
                   src={preview}
-                  alt="Current category"
-                  className="w-full h-64 object-cover rounded-lg border-2 border-gray-300"
+                  alt="Category preview"
+                  className="h-64 w-full rounded-lg object-cover border"
                 />
                 <button
+                  type="button"
                   onClick={() => {
                     setImage(null);
                     setPreview("");
                     setSizeInfo("");
                   }}
-                  className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-lg transition"
-                  type="button"
+                  className="absolute top-2 right-2 rounded-full bg-red-500 p-2 text-white"
                 >
-                  <X className="h-4 w-4" />
+                  <X size={16} />
                 </button>
                 {sizeInfo && (
-                  <p className="text-center text-sm text-gray-600 mt-2">{sizeInfo}</p>
+                  <p className="text-center text-xs text-gray-500 mt-2">
+                    {sizeInfo}
+                  </p>
                 )}
               </div>
             ) : (
               <div
-                className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-yellow-500 transition"
-                onClick={() => document.getElementById("edit-cat-image")?.click()}
+                onClick={() =>
+                  document
+                    .getElementById("edit-category-image")
+                    ?.click()
+                }
+                className="cursor-pointer rounded-lg border-2 border-dashed p-6 text-center hover:border-yellow-500"
               >
-                <Upload className="mx-auto h-10 w-10 text-gray-400" />
-                <p className="mt-2 text-sm text-gray-600">Click to change image</p>
-                <p className="text-xs text-gray-500">Auto-compressed less than 500 KB</p>
+                <Upload className="mx-auto h-8 w-8 text-gray-400" />
+                <p className="mt-2 text-sm text-gray-600">
+                  Click to upload image
+                </p>
+                <p className="text-xs text-gray-500">
+                  Auto-compressed &lt; 500 KB
+                </p>
               </div>
             )}
 
             <Input
-              id="edit-cat-image"
+              id="edit-category-image"
               type="file"
               accept="image/*"
               onChange={handleImageChange}
               className="hidden"
-              disabled={isLoading}
+              disabled={loading}
             />
           </div>
         </div>
@@ -235,16 +260,16 @@ export default function EditCategoryDialog({ category }: EditCategoryDialogProps
           <Button
             variant="outline"
             onClick={() => setOpen(false)}
-            disabled={isLoading}
+            disabled={loading}
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
-            disabled={isLoading || !name.trim() || !image}
+            disabled={loading || !name.trim() || !image}
             className="bg-yellow-600 hover:bg-yellow-700"
           >
-            {isLoading ? "Saving..." : "Save Changes"}
+            {loading ? "Saving..." : "Save Changes"}
           </Button>
         </DialogFooter>
       </DialogContent>

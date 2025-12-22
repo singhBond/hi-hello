@@ -135,7 +135,7 @@ export const Cart = () => {
     if (orderMode === "online") message += `*Delivery Charge:* ₹${deliveryCharge}%0A`;
     message += `*Total:* ₹${total}%0A%0AThank you!`;
 
-    const whatsappUrl = `https://wa.me/919113320865?text=${message}`;
+    const whatsappUrl = `https://wa.me/919693206902?text=${message}`;
     window.open(whatsappUrl, "_blank");
     clearCart();
   };

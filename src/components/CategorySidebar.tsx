@@ -98,7 +98,7 @@ export const CategorySidebar: React.FC<Props> = ({
                 }}
               />
             </div>
-            <span className="text-xs sm:text-sm font-semibold text-center mt-1 uppercase tracking-wider text-gray-800 ">
+            <span className="text-xs sm:text-sm font-semibold text-center mt-1 uppercase tracking-wider text-gray-700 ">
               {cat.name}
             </span>
           </div>

@@ -183,7 +183,7 @@ export default function AdminPanel() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-yellow-50">
-            Admin -  𝔅𝔦𝔯𝔶𝔞𝔫𝔦 ℌ𝔬𝔲𝔰𝔢 
+            Admin -  HI-HELLO
           </h1>
           <Button
             variant="ghost"

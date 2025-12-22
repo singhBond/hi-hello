@@ -44,7 +44,7 @@ export default function BiryaniLoader() {
       {/* Text */}
       <div className="mt-8 text-center">
         <p className="text-3xl font-bold text-orange-800 tracking-wide animate-pulse">
-          Just getting your Lazeeez Biryani...
+          Just getting your Food Items
         </p>
         <p className="text-lg text-amber-700 mt-2">
           Slow-cooked on dum for perfect flavour
