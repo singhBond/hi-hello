@@ -84,8 +84,8 @@ export const CategorySidebar: React.FC<Props> = ({
             onClick={() => onCategoryChange(cat.id)}
             className={`flex flex-col items-center cursor-pointer rounded-xl px-8 py-2 mb-2 transition-all border ${
               activeCategory === cat.id
-                ? "bg-orange-100 border-orange-400 shadow-lg scale-110"
-                : "hover:bg-gray-50 border-transparent"
+                ? "bg-red-400 border-orange-400 shadow-lg scale-110"
+                : "hover:bg-red-700 border-transparent"
             }`}
           >
             <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-200 shadow-sm">
@@ -98,7 +98,7 @@ export const CategorySidebar: React.FC<Props> = ({
                 }}
               />
             </div>
-            <span className="text-xs sm:text-sm font-semibold text-center mt-1 uppercase tracking-wider text-gray-700 ">
+            <span className="text-xs sm:text-sm font-semibold text-center mt-1 uppercase tracking-wider text-gray-200 ">
               {cat.name}
             </span>
           </div>
